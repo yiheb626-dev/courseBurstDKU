@@ -215,6 +215,51 @@ Then open:
 http://127.0.0.1:8765/
 ```
 
+## Packaging for Windows
+
+This project is prepared for PyInstaller `onedir` packaging. The packaged executable reuses the same binary for both the web dashboard and CLI worker mode.
+
+Install PyInstaller:
+
+```powershell
+python -m pip install pyinstaller
+```
+
+Build a console version first:
+
+```powershell
+.\build_exe.ps1
+```
+
+The output is:
+
+```text
+dist\CourseRushWeb\CourseRushWeb.exe
+```
+
+Distribute the entire folder:
+
+```text
+dist\CourseRushWeb\
+```
+
+Do not distribute only `CourseRushWeb.exe`, because the `onedir` build needs the bundled support files beside it.
+
+After the console version is tested, you can build a no-console version:
+
+```powershell
+.\build_exe.ps1 -NoConsole
+```
+
+Packaging notes:
+
+- The build does not include `data/`, `browser_profile/`, logs, cookies, or session files.
+- The build does not include a bundled Chromium browser.
+- Microsoft Edge must be installed on the target Windows machine.
+- Playwright is bundled for CDP control, but it connects to the user's local Edge instance.
+- Runtime data is created next to the packaged executable folder at first run.
+- `onedir` is recommended over `onefile` for faster startup, easier debugging, and fewer antivirus false positives.
+
 ## Security Notes
 
 This tool is intended to run locally. Keep the dashboard bound to `127.0.0.1` unless you fully understand the security implications of exposing it to a network.

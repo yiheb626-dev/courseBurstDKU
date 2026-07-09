@@ -12,5 +12,14 @@ if str(SRC) not in sys.path:
 from course_rush_web.web.server import main
 
 
+def dispatch() -> int:
+    if "--run-cli" in sys.argv:
+        sys.argv.remove("--run-cli")
+        from course_rush_web.cli import main as cli_main
+
+        return cli_main()
+    return main()
+
+
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(dispatch())

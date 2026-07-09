@@ -2,3 +2,9 @@ __pycache__/
 *.py[cod]
 data/
 browser_profile/
+.venv/
+.env
+.idea/
+build/
+dist/
+*.spec

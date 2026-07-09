@@ -179,14 +179,23 @@ class TaskManager:
         log_path = self.store.log_path(job_id)
 
         if os.name == "nt":
-            ps_command = (
-                f"$env:PYTHONPATH={self._ps_quote(str(self.src_root))}; "
-                f"Set-Location -LiteralPath {self._ps_quote(str(self.project_root))}; "
-                f"& {self._ps_quote(sys.executable)} -m course_rush_web.cli "
-                f"--config {self._ps_quote(str(config_path))} "
-                f"--status {self._ps_quote(str(status_path))} "
-                f"--log {self._ps_quote(str(log_path))}"
-            )
+            if getattr(sys, "frozen", False):
+                ps_command = (
+                    f"Set-Location -LiteralPath {self._ps_quote(str(self.project_root))}; "
+                    f"& {self._ps_quote(sys.executable)} --run-cli "
+                    f"--config {self._ps_quote(str(config_path))} "
+                    f"--status {self._ps_quote(str(status_path))} "
+                    f"--log {self._ps_quote(str(log_path))}"
+                )
+            else:
+                ps_command = (
+                    f"$env:PYTHONPATH={self._ps_quote(str(self.src_root))}; "
+                    f"Set-Location -LiteralPath {self._ps_quote(str(self.project_root))}; "
+                    f"& {self._ps_quote(sys.executable)} -m course_rush_web.cli "
+                    f"--config {self._ps_quote(str(config_path))} "
+                    f"--status {self._ps_quote(str(status_path))} "
+                    f"--log {self._ps_quote(str(log_path))}"
+                )
             return [
                 "powershell.exe",
                 "-NoProfile",
@@ -197,6 +206,17 @@ class TaskManager:
             ]
 
         env_python = sys.executable
+        if getattr(sys, "frozen", False):
+            return [
+                env_python,
+                "--run-cli",
+                "--config",
+                str(config_path),
+                "--status",
+                str(status_path),
+                "--log",
+                str(log_path),
+            ]
         return [
             env_python,
             "-m",

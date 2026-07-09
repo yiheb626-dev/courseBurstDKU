@@ -5,6 +5,7 @@ import json
 import mimetypes
 import os
 import subprocess
+import sys
 import threading
 import webbrowser
 from http import HTTPStatus
@@ -25,7 +26,7 @@ from ..services.task_manager import TaskManager
 from ..services.time_sync import DEFAULT_TIME_SERVER, TimeSyncClient
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+PROJECT_ROOT = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parents[3]
 WEB_ROOT = Path(__file__).resolve().parent
 STATIC_ROOT = WEB_ROOT / "static"
 TEMPLATE_ROOT = WEB_ROOT / "templates"
