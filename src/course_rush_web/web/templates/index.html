@@ -1,0 +1,227 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Course Rush Web</title>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1 data-i18n="app.title">抢课任务控制台</h1>
+        <p data-i18n="app.subtitle">绑定专用 Edge 选课页面，读取购物车课程，按计划启动抢课任务。</p>
+      </div>
+      <div class="status-pill" id="serverStatus" data-i18n="app.webReady">Web Ready</div>
+    </header>
+
+    <form id="jobForm"></form>
+
+    <nav class="tabs" aria-label="页面标签" data-i18n-aria-label="tabs.aria">
+      <button type="button" class="tab active" data-tab="browserTab" data-i18n="tabs.browser">专用浏览器</button>
+      <button type="button" class="tab" data-tab="cartTab" data-i18n="tabs.cart">购物车课程</button>
+      <button type="button" class="tab" data-tab="launchTab" data-i18n="tabs.launch">启动抢课程序</button>
+      <button type="button" class="tab" data-tab="settingsTab" data-i18n="tabs.settings">设置</button>
+    </nav>
+
+    <main class="tab-layout">
+      <section class="panel tab-panel active" id="browserTab">
+        <div class="section-head">
+          <h2 data-i18n="browser.title">专用浏览器</h2>
+          <button type="button" class="secondary" id="browserDefaultsBtn" data-i18n="common.restoreDefaults">恢复默认</button>
+        </div>
+        <p class="hint tab-intro" data-i18n="browser.intro">这个标签页用于绑定选课系统。先启动专用 Edge 窗口，在其中登录 DKUHub 并停留在 Shopping Cart 页面。</p>
+
+        <form id="browserForm" class="settings-grid browser-grid">
+          <label class="wide" data-i18n="browser.edgeExecutable">
+            Edge 可执行文件
+            <input name="edge_executable" placeholder="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" data-i18n-placeholder="browser.edgeExecutablePlaceholder">
+          </label>
+          <label data-i18n="browser.debugPort">
+            CDP 调试端口
+            <input name="remote_debugging_port" type="number" min="1" max="65535" value="9222">
+          </label>
+          <label data-i18n="browser.startUrl">
+            起始页面
+            <input name="start_url" placeholder="https://dkuhub.dku.edu.cn" data-i18n-placeholder="browser.startUrlPlaceholder">
+          </label>
+          <label class="wide" data-i18n="browser.userDataDir">
+            专用浏览器用户目录
+            <input name="user_data_dir" placeholder="D:\edge-cdp-profile" data-i18n-placeholder="browser.userDataDirPlaceholder">
+          </label>
+          <div class="wide hint" data-i18n="browser.launchHint">启动后会弹出一个独立 Edge 窗口，并启用 remote debugging。</div>
+          <div class="wide actions">
+            <button type="submit" class="primary" data-i18n="browser.launchButton">启动专用浏览器</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel tab-panel" id="cartTab">
+        <div class="section-head">
+          <h2 data-i18n="cart.title">购物车课程</h2>
+          <div class="button-group">
+            <button type="button" class="primary" id="readCartBtn" data-i18n="cart.readButton">读取购物车课程</button>
+            <button type="button" class="secondary" id="addCourseBtn" data-i18n="cart.addButton">手动补充</button>
+          </div>
+        </div>
+        <div class="hint" id="cartReadSummary" data-i18n="cart.readSummaryInitial">课程表会尽量从当前 Shopping Cart 页面自动读取。真正执行时仍以捕获到的 enroll 请求为准。</div>
+
+        <div class="course-form">
+          <label data-i18n="cart.courseName">课程名称<input id="courseName" placeholder="例如 CS 201" data-i18n-placeholder="cart.courseNamePlaceholder"></label>
+          <label data-i18n="cart.component">类型<input id="courseComponent" placeholder="LEC / REC / LAB" data-i18n-placeholder="cart.componentPlaceholder"></label>
+          <label data-i18n="cart.classNbr">Class Nbr<input id="courseNbr" type="number" min="1" placeholder="1041" data-i18n-placeholder="cart.classNbrPlaceholder"></label>
+          <label data-i18n="cart.section">Section<input id="courseSection" placeholder="01" data-i18n-placeholder="cart.sectionPlaceholder"></label>
+          <label data-i18n="cart.instructor">教师<input id="courseInstructor" placeholder="Instructor" data-i18n-placeholder="cart.instructorPlaceholder"></label>
+          <label class="wide" data-i18n="cart.note">备注<input id="courseNote" placeholder="优先级、替代课等" data-i18n-placeholder="cart.notePlaceholder"></label>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th data-i18n="cart.table.course">课程</th><th data-i18n="cart.table.component">类型</th><th data-i18n="cart.table.classNbr">Class Nbr</th><th data-i18n="cart.table.section">Section</th><th data-i18n="cart.table.instructor">教师</th><th data-i18n="cart.table.status">状态</th><th></th></tr>
+            </thead>
+            <tbody id="courseTable">
+              <tr class="empty-row"><td colspan="7" data-i18n="cart.empty">还没有读取到购物车课程。请先启动专用浏览器并打开 Shopping Cart 页面。</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="launchTab">
+        <div class="launch-grid">
+          <section class="panel">
+            <div class="section-head">
+              <h2 data-i18n="launch.title">启动抢课程序</h2>
+              <button type="button" class="secondary" id="clearScheduleBtn" data-i18n="launch.clearSchedule">清除定时</button>
+            </div>
+
+            <div class="settings-grid">
+              <label class="wide" data-i18n="launch.scheduledStart">自动启动时间<input form="jobForm" name="scheduled_start" type="datetime-local"></label>
+              <div class="wide hint" data-i18n="launch.scheduleHint">定时建议设置在 10 分钟内，太晚可能导致登录会话过期。</div>
+              <label class="checkbox-label wide" data-i18n="launch.keepSessionAlive">
+                <input form="jobForm" name="keep_session_alive" type="checkbox" checked>
+                定时等待期间每 10 分钟刷新一次浏览器页面，尽量保持会话有效
+              </label>
+              <label class="checkbox-label wide" data-i18n="launch.timeSyncEnabled">
+                <input form="jobForm" name="time_sync_enabled" type="checkbox" checked>
+                使用腾讯 NTP 官方时间校准自动启动时间
+              </label>
+              <label data-i18n="launch.timeServer">时间服务器<input form="jobForm" name="time_sync_server" value="ntp.tencent.com"></label>
+              <div class="time-sync-actions">
+                <button type="button" class="secondary" id="timeSyncBtn" data-i18n="launch.getTimeOffset">获取时间偏移</button>
+              </div>
+              <div class="wide hint" id="timeSyncStatus" data-i18n="launch.timeSyncStatusInitial">创建任务时会自动获取一次官方时间偏移；实际 CLI 启动时间 = 自动启动时间 - 捕获沉淀秒数 - NTP offset。</div>
+              <div class="wide actions"><button type="submit" form="jobForm" class="primary" data-i18n="launch.createRun">创建并运行任务</button></div>
+            </div>
+          </section>
+
+          <aside class="panel status-panel">
+            <div class="section-head">
+              <h2 data-i18n="status.title">任务状态</h2>
+              <button type="button" class="secondary" id="refreshBtn" data-i18n="common.refresh">刷新</button>
+            </div>
+            <div id="jobList" class="job-list"></div>
+
+            <div class="status-card">
+              <div class="status-row"><span data-i18n="status.currentJob">当前任务</span><strong id="activeJobId">无</strong></div>
+              <div class="status-row"><span data-i18n="status.status">状态</span><strong id="activeJobStatus">-</strong></div>
+              <div class="status-row"><span data-i18n="status.round">轮次</span><strong id="activeRound">-</strong></div>
+              <div class="status-row"><span data-i18n="status.enrolled">是否成功</span><strong id="activeEnrolled">-</strong></div>
+              <div class="status-row vertical"><span data-i18n="status.message">消息</span><strong id="activeMessage">-</strong></div>
+              <button type="button" class="danger" id="stopBtn" disabled data-i18n="status.stop">停止任务</button>
+            </div>
+          </aside>
+        </div>
+
+        <section class="panel log-panel">
+          <h2 class="log-title" data-i18n="log.title">CLI 同步日志</h2>
+          <pre id="logBox" class="log-box" data-i18n="log.empty">暂无日志。</pre>
+        </section>
+      </section>
+
+      <section class="panel tab-panel" id="settingsTab">
+        <div class="section-head">
+          <h2 data-i18n="settings.title">设置</h2>
+          <button type="button" class="secondary" id="resetBtn" data-i18n="common.restoreDefaults">恢复默认</button>
+        </div>
+        <p class="hint tab-intro" data-i18n="settings.intro">这里放置抢课参数。默认参数偏保守，并带有每秒 5 个请求的安全上限。</p>
+
+        <div class="settings-grid">
+          <label class="wide" data-i18n="settings.language">语言
+            <select id="languageSelect">
+              <option value="zh" data-i18n="language.zh">中文</option>
+              <option value="en" data-i18n="language.en">English</option>
+            </select>
+          </label>
+          <label class="wide" data-i18n="settings.cdpUrl">Edge CDP 地址<input form="jobForm" name="cdp_url" value="http://127.0.0.1:9222"></label>
+          <label data-i18n="settings.pageKeyword">页面关键词<input form="jobForm" name="page_url_keyword" value="dkuhub.dku.edu.cn"></label>
+          <label data-i18n="settings.captureKeywords">捕获关键词<input form="jobForm" name="capture_keywords" value="IScript_Enroll"></label>
+          <label data-i18n="settings.captureTimeout">捕获超时秒数<input form="jobForm" name="capture_timeout" type="number" min="1" value="120"></label>
+          <label data-i18n="settings.captureSettleSeconds">捕获沉淀秒数<input form="jobForm" name="capture_settle_seconds" type="number" min="0.1" step="0.1" value="1.5"></label>
+          <label class="checkbox-label" data-i18n="settings.autoClickEnroll"><input form="jobForm" name="auto_click_enroll" type="checkbox" checked>自动点击一次 Enroll 捕获请求</label>
+          <input form="jobForm" name="strategy_mode" type="hidden" value="smooth">
+          <section class="wide strategy-box" aria-label="抢课策略组" data-i18n-aria-label="strategy.aria">
+            <div class="section-head">
+              <h2 data-i18n="strategy.title">抢课策略组</h2>
+              <span class="hint" data-i18n="strategy.hint">平滑为默认策略；Burst 可直接使用默认参数，修改 Burst 或使用混合需要 Override Code。</span>
+            </div>
+            <div class="strategy-tabs" role="tablist">
+              <button type="button" class="strategy-tab active" data-strategy="smooth" data-i18n="strategy.smooth">平滑</button>
+              <button type="button" class="strategy-tab" data-strategy="burst" data-i18n="strategy.burst">Burst</button>
+              <button type="button" class="strategy-tab" data-strategy="hybrid" data-i18n="strategy.hybrid">混合</button>
+            </div>
+
+            <div class="strategy-panel active" id="strategySmooth">
+              <div class="settings-grid compact-grid">
+                <label data-i18n="strategy.requestsPerSecond">每秒请求数<input form="jobForm" name="smooth_requests_per_second" type="number" min="0.1" step="0.1" value="2.5"></label>
+                <label data-i18n="strategy.totalRequests">总请求数<input form="jobForm" name="smooth_total_requests" type="number" min="0" value="50"></label>
+                <div class="wide hint" data-i18n="strategy.smoothHint">平滑模式按固定间隔每次发送 1 个请求。总请求数为 0 表示持续运行直到成功或手动停止。</div>
+              </div>
+            </div>
+
+            <div class="strategy-panel" id="strategyBurst">
+              <div class="settings-grid compact-grid">
+                <label data-i18n="strategy.requestsPerBurstRound">每轮请求数<input form="jobForm" name="burst_count" type="number" min="1" value="5"></label>
+                <label data-i18n="strategy.burstRoundsPerSecond">每秒 Burst 轮数<input form="jobForm" name="burst_rounds_per_second" type="number" min="0.1" step="0.1" value="0.9"></label>
+                <label data-i18n="strategy.totalRounds">总轮数<input form="jobForm" name="burst_rounds" type="number" min="0" value="10"></label>
+                <div class="wide hint" data-i18n="strategy.burstHint">Burst 模式每轮会并发发送多个请求；未验证 Override Code 时只能使用默认参数。总轮数为 0 表示持续运行直到成功或手动停止。</div>
+              </div>
+            </div>
+
+            <div class="strategy-panel" id="strategyHybrid">
+              <div class="settings-grid compact-grid">
+                <label data-i18n="strategy.initialBurstRounds">初始 Burst 轮数<input form="jobForm" name="hybrid_burst_rounds" type="number" min="0" value="2"></label>
+                <label data-i18n="strategy.burstCount">Burst 每轮请求数<input form="jobForm" name="hybrid_burst_count" type="number" min="1" value="5"></label>
+                <label data-i18n="strategy.hybridBurstRoundsPerSecond">Burst 每秒轮数<input form="jobForm" name="hybrid_burst_rounds_per_second" type="number" min="0.1" step="0.1" value="0.9"></label>
+                <label data-i18n="strategy.hybridSmoothRps">平滑阶段每秒请求数<input form="jobForm" name="hybrid_smooth_requests_per_second" type="number" min="0.1" step="0.1" value="2.5"></label>
+                <label data-i18n="strategy.totalRequests">总请求数<input form="jobForm" name="hybrid_total_requests" type="number" min="0" value="50"></label>
+                <div class="wide hint" data-i18n="strategy.hybridHint">混合模式先短 Burst 覆盖开抢瞬间，然后转平滑单请求；总请求数为 0 表示持续运行直到成功或手动停止。需要 Override Code 解锁。</div>
+              </div>
+            </div>
+          </section>
+          <div class="wide override-row">
+            <label data-i18n="override.label">Override Code<input form="jobForm" name="rate_limit_override_code" type="password" autocomplete="off" placeholder="默认最多 5 个请求/秒" data-i18n-placeholder="override.placeholder"></label>
+            <button type="button" class="secondary" id="verifyOverrideBtn" data-i18n="override.verify">验证</button>
+          </div>
+          <div class="wide hint" id="overrideStatus" data-i18n="override.defaultStatus">安全上限：默认每秒最多 5 个请求；Burst 默认参数可直接使用；Override Code 验证通过后最高开放至每秒 50 个请求并允许修改 Burst/混合参数。</div>
+          <div class="wide cleanup-box">
+            <div>
+              <strong data-i18n="cleanup.cacheTitle">浏览器缓存清理</strong>
+              <p class="hint" data-i18n="cleanup.cacheHint">清理专用 Edge 的缓存、扩展数据、指标、组件包和模型文件；保留 DKUHub cookies/session、登录数据和本地存储。请先关闭专用 Edge 再清理。</p>
+            </div>
+            <button type="button" class="secondary" id="cleanCacheBtn" data-i18n="cleanup.cacheButton">清理缓存（保留登录态）</button>
+          </div>
+          <div class="wide cleanup-box history-box">
+            <div>
+              <strong data-i18n="cleanup.historyTitle">清空历史记录</strong>
+              <p class="hint" data-i18n="cleanup.historyHint">删除专用 Edge 的浏览历史、预测记录和下载历史，并清空任务状态、配置和 CLI 日志；不会删除 DKUHub cookies、登录数据和本地存储。</p>
+            </div>
+            <button type="button" class="danger-inline" id="clearHistoryBtn" data-i18n="cleanup.historyButton">清空历史记录</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
