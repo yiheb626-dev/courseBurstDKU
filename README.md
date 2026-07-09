@@ -1,4 +1,4 @@
-﻿# Course Rush Web
+﻿# Course Burst Web App
 
 Course Rush Web is a local web dashboard for running a dedicated course-enrollment automation workflow. It starts a separate Microsoft Edge profile, connects to the enrollment page through Chrome DevTools Protocol (CDP), captures a real enroll request, and replays it according to user-configured safety limits and strategies.
 
