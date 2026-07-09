@@ -1,45 +1,77 @@
 ﻿# Course Rush Web
 
-这是给抢课脚本做的独立网页端项目。原始脚本没有被改动，副本保存在 `legacy/` 目录中。
+Course Rush Web is a local web dashboard for running a dedicated course-enrollment automation workflow. It starts a separate Microsoft Edge profile, connects to the enrollment page through Chrome DevTools Protocol (CDP), captures a real enroll request, and replays it according to user-configured safety limits and strategies.
 
-## 功能
+The original legacy files are kept separately under `legacy/`. This project should be used from the `courseBurstDKU` directory.
 
-- 一键启动专用 Edge 窗口：自动带上 `--remote-debugging-port` 和独立 `--user-data-dir`。
-- 在专用浏览器里打开选课系统页面，登录后供抢课任务捕获请求。
-- 从 Shopping Cart 页面自动读取课程信息；读取失败时仍可手动补充。
-- 任务启动后默认自动点击一次 `Enroll In Selected Classes` 来捕获真实请求，不再需要手动点击；如果页面按钮未识别，会回退为手动点击提示。
-- 设置捕获关键词、捕获超时、抢课策略组参数和自动启动时间。
-- 默认策略为平滑模式：每秒 2.5 个请求、总请求数 50；`总请求数 = 0` 才表示持续运行。
-- 策略组提供平滑、burst、混合三种模式；burst 可直接使用默认参数，修改 burst 参数或使用混合模式需要 override code 验证通过。
-- 默认强制安全上限：最多 5 个请求/秒；override code 验证通过后最高开放至 50 个请求/秒。
-- 定时抢课建议设置在 10 分钟内；超过 10 分钟可能发生登录会话过期。开启保活后，等待期间会每 10 分钟刷新一次浏览器页面。
-- 启动抢课任务后弹出独立 PowerShell CLI 窗口，窗口内返回捕获和抢课状态。
-- Web 页面同步展示任务状态、轮次、是否成功和 CLI 日志尾部。
+## Features
 
-## 目录结构
+- Starts a dedicated Microsoft Edge window with `--remote-debugging-port` and an isolated `--user-data-dir`.
+- Connects to the enrollment system page through Edge CDP after the user signs in.
+- Reads course rows from the Shopping Cart page when possible.
+- Allows manual course entry when automatic cart reading is incomplete.
+- Captures the real enroll request by clicking `Enroll In Selected Classes` once automatically when possible.
+- Falls back to manual click capture if the enroll button cannot be detected.
+- Provides configurable capture keywords, capture timeout, capture settle time, auto-start time, and keep-alive behavior.
+- Supports Smooth, Burst, and Hybrid course-rush strategies.
+- Uses conservative defaults: Smooth mode at 2.5 requests per second and 50 total requests.
+- Enforces a default safety limit of 5 requests per second.
+- Allows higher limits only after local Override Code verification, up to 50 requests per second.
+- Keeps Hybrid locked until Override Code verification succeeds.
+- Lets Burst use default parameters without verification, while editing Burst parameters requires verification.
+- Supports Tencent NTP time calibration for scheduled starts.
+- Uses the formula: `CLI start time = auto start time - capture settle seconds - NTP offset`.
+- Launches a separate PowerShell CLI window for the actual task.
+- Synchronizes job status, round count, success status, and CLI log tail back to the web dashboard.
+- Includes a Chinese/English language selector with `localStorage` persistence.
+
+## What This Project Does Not Store
+
+This repository should not contain credentials, cookies, session data, private keys, encryption secrets, or Override Code values.
+
+Runtime browser state and job logs are generated locally and are ignored by Git:
+
+```text
+data/
+browser_profile/
+__pycache__/
+```
+
+Before publishing to GitHub, review staged files and make sure no private runtime files are included.
+
+## Project Structure
 
 ```text
 courseBurstDKU/
-  legacy/                         # 原始脚本和说明副本
-  run_web.py                      # 网页端启动入口
+  legacy/                         # Legacy script copies and notes
+  run_web.py                      # Web dashboard entry point
+  requirements.txt                # Python dependencies
   src/course_rush_web/
-    cli.py                        # 独立 CLI 任务入口
+    cli.py                        # Standalone CLI task entry point
     core/
-      burst_engine.py             # 捕获 + burst 重放核心逻辑
-      models.py                   # 配置和状态模型
+      burst_engine.py             # Request capture and replay logic
+      models.py                   # Settings and status models
     services/
-      browser_launcher.py         # 启动专用 Edge/CDP 浏览器
-      cart_reader.py              # 从 Shopping Cart 页面读取课程
-      job_store.py                # 配置、状态、日志文件读写
-      task_manager.py             # 任务创建、定时、弹出 CLI、停止
+      browser_launcher.py         # Dedicated Edge/CDP launcher
+      cart_reader.py              # Shopping Cart course reader
+      job_store.py                # Job config, status, and log storage
+      task_manager.py             # Job creation, scheduling, CLI launch, stop
+      time_sync.py                # NTP time offset measurement
     web/
-      server.py                   # 标准库 HTTP JSON 服务
-      templates/index.html        # 图形界面
-      static/app.js               # 前端交互
-      static/styles.css           # 页面样式
+      server.py                   # Standard-library HTTP JSON server
+      templates/index.html        # Web UI
+      static/app.js               # Frontend logic and i18n
+      static/styles.css           # Styles
 ```
 
-## 安装
+## Requirements
+
+- Windows
+- Python 3.10 or newer
+- Microsoft Edge
+- Playwright Chromium runtime
+
+Install dependencies:
 
 ```powershell
 cd "D:\PycharmProjects\problemSolving\courseBurstDKU"
@@ -47,47 +79,78 @@ python -m pip install -r requirements.txt
 python -m playwright install chromium
 ```
 
-## 启动网页端
+## Start the Web Dashboard
 
 ```powershell
 cd "D:\PycharmProjects\problemSolving\courseBurstDKU"
 python .\run_web.py
 ```
 
-启动后会自动打开默认浏览器进入控制台页面。默认访问地址：
+The dashboard opens automatically in your default browser.
+
+Default URL:
 
 ```text
 http://127.0.0.1:8765/
 ```
 
-如果端口占用：
+Use another port if needed:
 
 ```powershell
 python .\run_web.py --port 8777
 ```
 
-如果只想启动服务、不自动打开浏览器：
+Start the server without opening a browser:
 
 ```powershell
 python .\run_web.py --no-open
 ```
 
-## 使用流程
+## Usage Flow
 
-1. 打开网页端。
-2. 在“专用浏览器”区域确认 Edge 路径、CDP 端口、起始页面和用户目录。
-3. 点击“启动专用浏览器”，系统会弹出一个独立 Edge 窗口。
-4. 在这个 Edge 窗口里登录选课系统，并停留在可以点击选课按钮的页面。
-5. 点击“读取购物车课程”，确认页面里的课程表和 Shopping Cart 一致；LEC、REC、LAB、SEM 会分开显示。必要时可以手动补充。
-6. 点击“创建并运行任务”，系统会弹出 PowerShell CLI 任务窗口。
-7. 默认情况下，CLI 会自动点击一次 `Enroll In Selected Classes` 捕获请求；如果自动点击失败，CLI 会提示你手动点击一次。
-8. 程序捕获真实请求后开始按配置 burst 重放，并在 CLI 和网页里同步状态。
+1. Open the web dashboard.
+2. Go to `Dedicated Browser`.
+3. Confirm the Edge executable path, CDP port, start URL, and user data directory.
+4. Click `Start Dedicated Browser`.
+5. In the dedicated Edge window, sign in to the enrollment system.
+6. Stay on the Shopping Cart or enroll page.
+7. Click `Read Shopping Cart Courses` and confirm the course table.
+8. Add courses manually if automatic reading misses anything.
+9. Configure strategy and schedule settings.
+10. Click `Create and Run Job`.
+11. Watch the PowerShell CLI window and the dashboard status panel.
 
-课程表用于让你确认当前 Shopping Cart 内容和目标 Class Nbr；真正重放的 URL、headers、body 仍来自 Edge 中手动点击捕获到的 enroll 请求。运行日志里的 `TARGET CLASSES FROM REQUEST` 是最终实际抢课目标。
+The course table is only for user confirmation. The actual replay target is still based on the captured enroll request URL, headers, and body from Edge.
 
-## 数据文件
+## Strategy Notes
 
-运行时生成的数据保存在：
+### Smooth
+
+Smooth mode sends one request at a fixed interval. It is the default mode and uses conservative parameters.
+
+### Burst
+
+Burst mode sends multiple concurrent requests per round. Without Override Code verification, Burst can only use default parameters.
+
+### Hybrid
+
+Hybrid mode starts with a short Burst phase, then switches to Smooth mode. It stays locked until Override Code verification succeeds.
+
+## Time Calibration
+
+When NTP time sync is enabled, the app measures the official time offset before creating a scheduled job.
+
+The launch formula is:
+
+```text
+CLI start time = auto start time - capture settle seconds - NTP offset
+```
+
+Scheduling within 10 minutes is recommended. Longer waits may cause the login session to expire. When keep-alive is enabled, the app refreshes the browser page every 10 minutes while waiting.
+
+## Runtime Data
+
+Job data is written to:
 
 ```text
 courseBurstDKU/data/jobs/*.config.json
@@ -95,10 +158,65 @@ courseBurstDKU/data/jobs/*.status.json
 courseBurstDKU/data/logs/*.log
 ```
 
-专用浏览器用户数据默认保存在：
+Dedicated browser data is written to:
 
 ```text
 courseBurstDKU/browser_profile/
 ```
 
-`data/` 和 `browser_profile/` 都是运行时目录，不需要提交。
+These directories are runtime-only and should not be committed.
+
+## GitHub Publishing Checklist
+
+Before uploading:
+
+- Confirm `.gitignore` excludes runtime and local-only files.
+- Do not commit `data/`.
+- Do not commit `browser_profile/`.
+- Do not commit cookies, sessions, logs, screenshots, local credentials, or environment files.
+- Do not publish any Override Code value or verification secret.
+- Review `git status` before every commit.
+
+Suggested `.gitignore` entries:
+
+```gitignore
+__pycache__/
+*.py[cod]
+data/
+browser_profile/
+.venv/
+.env
+.idea/
+```
+
+If you want to publish only the web project and not the legacy copy, also ignore:
+
+```gitignore
+legacy/
+```
+
+## Development Checks
+
+Check frontend syntax:
+
+```powershell
+node --check src\course_rush_web\web\static\app.js
+```
+
+Run the dashboard locally after frontend changes:
+
+```powershell
+python .\run_web.py --no-open
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8765/
+```
+
+## Security Notes
+
+This tool is intended to run locally. Keep the dashboard bound to `127.0.0.1` unless you fully understand the security implications of exposing it to a network.
+
+Do not share browser profiles, session files, cookies, logs, or any local verification secrets. The repository should contain source code and documentation only.
