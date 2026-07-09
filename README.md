@@ -2,7 +2,7 @@
 
 Course Rush Web is a local web dashboard for running a dedicated course-enrollment automation workflow. It starts a separate Microsoft Edge profile, connects to the enrollment page through Chrome DevTools Protocol (CDP), captures a real enroll request, and replays it according to user-configured safety limits and strategies.
 
-The original legacy files are kept separately under `legacy/`. This project should be used from the `courseBurstDKU` directory.
+This project is only for sharing purposes. The author is not responsible for ANY consequences caused by the users of this web app. They should be fully aware of the capabilities as well as its limitations of this project. Any attempt of violating the school regulations using this app is strongly discouraged.
 
 ## Features
 
