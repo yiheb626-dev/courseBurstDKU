@@ -1,70 +1,30 @@
-﻿# Course Burst Web App
+# Course Burst DKU
 
-Course Rush Web is a local web dashboard for running a dedicated course-enrollment automation workflow. It starts a separate Microsoft Edge profile, connects to the enrollment page through Chrome DevTools Protocol (CDP), captures a real enroll request, and replays it according to user-configured safety limits and strategies.
+Course Burst DKU is a local web dashboard for running a dedicated course-enrollment automation workflow. It starts a separate Microsoft Edge profile, connects to the enrollment page through Chrome DevTools Protocol (CDP), captures a real DKU Hub enroll request, and replays it according to user-configured safety limits and strategies.
 
-This project is only for sharing purposes. The author is not responsible for ANY consequences caused by the users of this web app. They should be fully aware of the capabilities as well as its limitations of this project. Any attempt of violating the school regulations using this app is strongly discouraged.
+Current version: [yiheb626-dev/courseBurstDKU](https://github.com/yiheb626-dev/courseBurstDKU).
 
-## Features
+**Disclaimer: This project is provided for local educational and personal workflow automation purposes only. It is strongly recommended by the author to follow the school regulations and do not use it to overload, disrupt, or attack any service. The author does not provide any guarantee of enrollment success or assume responsibility for misuse.**
 
-- Starts a dedicated Microsoft Edge window with `--remote-debugging-port` and an isolated `--user-data-dir`.
-- Connects to the enrollment system page through Edge CDP after the user signs in.
-- Reads course rows from the Shopping Cart page when possible.
-- Allows manual course entry when automatic cart reading is incomplete.
-- Captures the real enroll request by clicking `Enroll In Selected Classes` once automatically when possible.
-- Falls back to manual click capture if the enroll button cannot be detected.
-- Provides configurable capture keywords, capture timeout, capture settle time, auto-start time, and keep-alive behavior.
-- Supports Smooth, Burst, and Hybrid course-rush strategies.
-- Uses conservative defaults: Smooth mode at 2.5 requests per second and 50 total requests.
-- Enforces a default safety limit of 5 requests per second.
-- Allows higher limits only after local Override Code verification, up to 50 requests per second.
-- Keeps Hybrid locked until Override Code verification succeeds.
-- Lets Burst use default parameters without verification, while editing Burst parameters requires verification.
-- Supports Tencent NTP time calibration for scheduled starts.
-- Uses the formula: `CLI start time = auto start time - capture settle seconds - NTP offset`.
-- Launches a separate PowerShell CLI window for the actual task.
-- Synchronizes job status, round count, success status, and CLI log tail back to the web dashboard.
-- Includes a Chinese/English language selector with `localStorage` persistence.
+## How to Run
 
-## What This Project Does Not Store
+### Recommended: Download the EXE Package
 
-This repository should not contain credentials, cookies, session data, private keys, encryption secrets, or Override Code values.
+The recommended way to run this project is to download the packaged Windows build from the GitHub Releases page:
 
-Runtime browser state and job logs are generated locally and are ignored by Git:
+[Download from Releases](https://github.com/yiheb626-dev/courseBurstDKU/releases)
 
-```text
-data/
-browser_profile/
-__pycache__/
-```
+After downloading:
 
-Before publishing to GitHub, review staged files and make sure no private runtime files are included.
+1. Extract the package.
+2. Run `CourseRushWeb.exe`.
+3. Open the local dashboard if it does not open automatically.
 
-## Project Structure
+The packaged version is designed to use the Microsoft Edge installation on your Windows machine. Do not move only the `.exe` file out of the extracted folder; keep the package folder intact.
 
-```text
-courseBurstDKU/
-  legacy/                         # Legacy script copies and notes
-  run_web.py                      # Web dashboard entry point
-  requirements.txt                # Python dependencies
-  src/course_rush_web/
-    cli.py                        # Standalone CLI task entry point
-    core/
-      burst_engine.py             # Request capture and replay logic
-      models.py                   # Settings and status models
-    services/
-      browser_launcher.py         # Dedicated Edge/CDP launcher
-      cart_reader.py              # Shopping Cart course reader
-      job_store.py                # Job config, status, and log storage
-      task_manager.py             # Job creation, scheduling, CLI launch, stop
-      time_sync.py                # NTP time offset measurement
-    web/
-      server.py                   # Standard-library HTTP JSON server
-      templates/index.html        # Web UI
-      static/app.js               # Frontend logic and i18n
-      static/styles.css           # Styles
-```
+### Alternative: Run from Command Line
 
-## Requirements
+Requirements:
 
 - Windows
 - Python 3.10 or newer
@@ -79,14 +39,11 @@ python -m pip install -r requirements.txt
 python -m playwright install chromium
 ```
 
-## Start the Web Dashboard
+Start the web dashboard:
 
 ```powershell
-cd "D:\PycharmProjects\problemSolving\courseBurstDKU"
 python .\run_web.py
 ```
-
-The dashboard opens automatically in your default browser.
 
 Default URL:
 
@@ -122,15 +79,36 @@ python .\run_web.py --no-open
 
 The course table is only for user confirmation. The actual replay target is still based on the captured enroll request URL, headers, and body from Edge.
 
+## Features
+
+- Starts a dedicated Microsoft Edge window with `--remote-debugging-port` and an isolated `--user-data-dir`.
+- Connects to the enrollment system page through Edge CDP after the user signs in.
+- Reads course rows from the Shopping Cart page when possible.
+- Allows manual course entry when automatic cart reading is incomplete.
+- Captures the real enroll request by clicking `Enroll In Selected Classes` once automatically when possible.
+- Falls back to manual click capture if the enroll button cannot be detected.
+- Provides configurable capture keywords, capture timeout, capture settle time, auto-start time, and keep-alive behavior.
+- Supports Smooth, Burst, and Hybrid course-rush strategies.
+- Uses conservative defaults: Smooth mode at 2.5 requests per second and 50 total requests.
+- Enforces a default safety limit of 5 requests per second.
+- Allows higher limits only after local Override Code verification, up to 50 requests per second.
+- Keeps Hybrid locked until Override Code verification succeeds.
+- Lets Burst use default parameters without verification, while editing Burst parameters requires verification.
+- Supports Tencent NTP time calibration for scheduled starts.
+- Uses the formula: `CLI start time = auto start time - capture settle seconds - NTP offset`.
+- Launches a separate PowerShell CLI window for the actual task.
+- Synchronizes job status, round count, success status, and CLI log tail back to the web dashboard.
+- Includes a Chinese/English language selector with `localStorage` persistence.
+
 ## Strategy Notes
 
 ### Smooth
 
-Smooth mode sends one request at a fixed interval. It is the default mode and uses conservative parameters.
+Smooth mode sends one request at a fixed interval. It is the default mode and uses conservative parameters as default.
 
 ### Burst
 
-Burst mode sends multiple concurrent requests per round. Without Override Code verification, Burst can only use default parameters.
+Burst mode sends multiple concurrent requests per round near instantly. Without Override Code verification, Burst can only use default parameters.
 
 ### Hybrid
 
@@ -164,104 +142,23 @@ Dedicated browser data is written to:
 courseBurstDKU/browser_profile/
 ```
 
-These directories are runtime-only and should not be committed.
-
-## GitHub Publishing Checklist
-
-Before uploading:
-
-- Confirm `.gitignore` excludes runtime and local-only files.
-- Do not commit `data/`.
-- Do not commit `browser_profile/`.
-- Do not commit cookies, sessions, logs, screenshots, local credentials, or environment files.
-- Do not publish any Override Code value or verification secret.
-- Review `git status` before every commit.
-
-Suggested `.gitignore` entries:
-
-```gitignore
-__pycache__/
-*.py[cod]
-data/
-browser_profile/
-.venv/
-.env
-.idea/
-```
-
-If you want to publish only the web project and not the legacy copy, also ignore:
-
-```gitignore
-legacy/
-```
-
-## Development Checks
-
-Check frontend syntax:
-
-```powershell
-node --check src\course_rush_web\web\static\app.js
-```
-
-Run the dashboard locally after frontend changes:
-
-```powershell
-python .\run_web.py --no-open
-```
-
-Then open:
-
-```text
-http://127.0.0.1:8765/
-```
-
-## Packaging for Windows
-
-This project is prepared for PyInstaller `onedir` packaging. The packaged executable reuses the same binary for both the web dashboard and CLI worker mode.
-
-Install PyInstaller:
-
-```powershell
-python -m pip install pyinstaller
-```
-
-Build a console version first:
-
-```powershell
-.\build_exe.ps1
-```
-
-The output is:
-
-```text
-dist\CourseRushWeb\CourseRushWeb.exe
-```
-
-Distribute the entire folder:
-
-```text
-dist\CourseRushWeb\
-```
-
-Do not distribute only `CourseRushWeb.exe`, because the `onedir` build needs the bundled support files beside it.
-
-After the console version is tested, you can build a no-console version:
-
-```powershell
-.\build_exe.ps1 -NoConsole
-```
-
-Packaging notes:
-
-- The build does not include `data/`, `browser_profile/`, logs, cookies, or session files.
-- The build does not include a bundled Chromium browser.
-- Microsoft Edge must be installed on the target Windows machine.
-- Playwright is bundled for CDP control, but it connects to the user's local Edge instance.
-- Runtime data is created next to the packaged executable folder at first run.
-- `onedir` is recommended over `onefile` for faster startup, easier debugging, and fewer antivirus false positives.
+These directories are runtime-only and should not be committed or shared.
 
 ## Security Notes
 
 This tool is intended to run locally. Keep the dashboard bound to `127.0.0.1` unless you fully understand the security implications of exposing it to a network.
 
-Do not share browser profiles, session files, cookies, logs, or any local verification secrets. The repository should contain source code and documentation only.
+Do not share browser profiles, session files, cookies, logs, screenshots, local credentials, environment files, or any local verification secrets. The repository should contain source code and documentation only.
+
+## What This Project Does Not Share
+
+This project does not share or upload credentials, cookies, session data, private keys, encryption secrets, Override Code values, browser profiles, or job logs.
+
+Runtime browser state and job logs are generated locally:
+
+```text
+data/
+browser_profile/
+```
+
+Review files before publishing, packaging, or sending this project to anyone else.
