@@ -205,6 +205,7 @@ class CourseRushHandler(BaseHTTPRequestHandler):
             "rate_limit_override_code": "",
             "keep_session_alive": True,
             "time_sync_enabled": True,
+            "start_offset_seconds": -0.3,
             "time_sync_server": DEFAULT_TIME_SERVER,
             "time_offset_ms": "",
             "time_sync_rtt_ms": "",

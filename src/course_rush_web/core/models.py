@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import math
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -84,6 +85,7 @@ class RushSettings:
     rate_limit_cap_per_second: float = MAX_SAFE_REQUESTS_PER_SECOND
     rate_limit_capped: bool = False
     time_sync_enabled: bool = True
+    start_offset_seconds: float = -0.3
     time_sync_server: str = DEFAULT_TIME_SERVER
     time_offset_ms: Optional[float] = None
     time_sync_rtt_ms: Optional[float] = None
@@ -223,6 +225,7 @@ class RushSettings:
             rate_limit_cap_per_second=rate_limit_cap,
             rate_limit_capped=rate_limit_capped,
             time_sync_enabled=_parse_bool(raw.get("time_sync_enabled", True)),
+            start_offset_seconds=_parse_start_offset(raw.get("start_offset_seconds", -0.3)),
             time_sync_server=str(raw.get("time_sync_server", DEFAULT_TIME_SERVER)).strip()
             or DEFAULT_TIME_SERVER,
             time_offset_ms=_parse_optional_float(raw.get("time_offset_ms")),
@@ -253,6 +256,15 @@ class JobConfig:
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
+
+
+def _parse_start_offset(value: object) -> float:
+    """Negative offsets start early; reject non-finite values and bound to five seconds."""
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return -0.3
+    return max(-5.0, min(5.0, parsed)) if math.isfinite(parsed) else -0.3
 
 
 def _parse_bool(value: object) -> bool:

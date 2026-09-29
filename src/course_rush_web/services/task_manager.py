@@ -324,7 +324,7 @@ class TaskManager:
         lead_seconds = settings.capture_settle_seconds
         parts = [self._time_sync_note(settings)]
         if settings.scheduled_start:
-            parts.append(f"Launch lead includes capture settle {lead_seconds:.1f}s.")
+            parts.append(f"Launch lead includes capture settle {lead_seconds:.1f}s; manual offset {settings.start_offset_seconds:+.1f}s.")
         return " ".join(part for part in parts if part)
 
     def _delay_until(self, settings: RushSettings) -> float:
@@ -338,9 +338,10 @@ class TaskManager:
         if parsed.tzinfo is None:
             parsed = parsed.astimezone()
         now = datetime.now(parsed.tzinfo or timezone.utc)
-        offset_seconds = (settings.time_offset_ms or 0.0) / 1000.0
+        offset_seconds = (settings.time_offset_ms or 0.0) / 1000.0 if settings.time_sync_enabled else 0.0
         lead_seconds = settings.capture_settle_seconds
-        return max(0.0, (parsed - now).total_seconds() - lead_seconds - offset_seconds)
+        # Manual offset is independent of NTP: negative starts early, positive starts late.
+        return max(0.0, (parsed - now).total_seconds() - lead_seconds - offset_seconds + settings.start_offset_seconds)
 
     def _new_job_id(self) -> str:
         stamp = datetime.now().strftime("%Y%m%d-%H%M%S")

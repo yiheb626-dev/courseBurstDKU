@@ -8,6 +8,7 @@
   lastActiveJob: null,
   timeSyncPayload: null,
   timeSyncCaptureSettleSeconds: null,
+  timeSyncStartOffsetSeconds: -0.3,
   timeSyncUseJobSuffix: false,
 };
 
@@ -76,6 +77,9 @@ const I18N = {
     "browser.launching": "正在启动专用浏览器...",
     "browser.launchFailed": "浏览器启动失败",
     "browser.launched": "浏览器已启动，PID {pid}",
+    "timing.title": "时间校准",
+    "timing.offset": "启动时间偏移（负值提前，正值滞后）",
+    "timing.hint": "提前 5 秒至滞后 5 秒，默认提前 0.3 秒。关闭校时后使用本机时间；手动偏移仍生效，只影响定时任务。实际请求时间受系统和网络耗时影响。",
     "timeSync.connecting": "正在连接腾讯 NTP 时间服务器...",
     "timeSync.fetching": "正在获取官方时间偏移...",
     "timeSync.fetched": "时间偏移已获取",
@@ -88,7 +92,7 @@ const I18N = {
     "timeSync.ahead": "提前",
     "timeSync.behind": "延后",
     "timeSync.noAdjust": "不调整",
-    "timeSync.resultWithSettle": "官方时间偏移 {offset} ms，RTT {rtt} ms；CLI 启动 = 自动启动时间 - 捕获沉淀 {settle}s - NTP offset，约{direction} {lead} ms。",
+    "timeSync.resultWithSettle": "官方时间偏移 {offset} ms，RTT {rtt} ms；CLI 启动 = 自动启动时间 - 捕获沉淀 {settle}s - NTP offset + 手动偏移，约{direction} {lead} ms。",
     "timeSync.resultOffsetOnly": "官方时间偏移 {offset} ms，RTT {rtt} ms；仅按 NTP offset 计算会{direction} {lead} ms。",
     "backend.hybridRequiresOverride": "混合策略需要先验证 override code。",
     "backend.burstDefaultOnly": "burst 未验证时只能使用默认参数。",
@@ -194,7 +198,7 @@ const I18N = {
     "launch.timeSyncEnabled": "Use Tencent NTP official time to calibrate the auto start time",
     "launch.timeServer": "Time server",
     "launch.getTimeOffset": "Get Time Offset",
-    "launch.timeSyncStatusInitial": "The official time offset is fetched once when the job is created; actual CLI start time = auto start time - capture settle seconds - NTP offset.",
+    "launch.timeSyncStatusInitial": "The official time offset is fetched once when the job is created; actual CLI start time = auto start time - capture settle seconds - NTP offset + manual offset.",
     "launch.createRun": "Create and Run Job",
     "launch.createRunning": "Creating job...",
     "launch.createFailed": "Failed to create job",
@@ -284,6 +288,9 @@ const I18N = {
     "browser.launching": "Starting dedicated browser...",
     "browser.launchFailed": "Failed to start browser",
     "browser.launched": "Browser started, PID {pid}",
+    "timing.title": "Time calibration",
+    "timing.offset": "Start offset (negative = early, positive = late)",
+    "timing.hint": "5 seconds early to 5 seconds late; default 0.3 seconds early. With NTP disabled, local time and manual offset apply. Scheduled jobs only; actual timing depends on system and network delays.",
     "timeSync.connecting": "Connecting to Tencent NTP time server...",
     "timeSync.fetching": "Fetching official time offset...",
     "timeSync.fetched": "Time offset fetched",
@@ -296,7 +303,7 @@ const I18N = {
     "timeSync.ahead": "ahead",
     "timeSync.behind": "behind",
     "timeSync.noAdjust": "no adjustment",
-    "timeSync.resultWithSettle": "Official time offset {offset} ms, RTT {rtt} ms; CLI start = auto start time - capture settle {settle}s - NTP offset, about {lead} ms {direction}.",
+    "timeSync.resultWithSettle": "Official time offset {offset} ms, RTT {rtt} ms; CLI start = auto start time - capture settle {settle}s - NTP offset + manual offset, about {lead} ms {direction}.",
     "timeSync.resultOffsetOnly": "Official time offset {offset} ms, RTT {rtt} ms; using only NTP offset would be about {lead} ms {direction}.",
     "backend.hybridRequiresOverride": "Hybrid strategy requires a verified override code.",
     "backend.burstDefaultOnly": "Without verification, Burst can only use default parameters.",
@@ -447,6 +454,7 @@ function applyLanguage() {
   if (languageSelect) {
     languageSelect.value = state.language;
   }
+  updateStartOffset();
   renderCourses();
   renderJobList(state.lastJobs);
   if (state.lastActiveJob) {
@@ -486,7 +494,8 @@ function setLanguage(language) {
   applyLanguage();
 }
 
-function rememberTimeSyncResult(payload, captureSettleSeconds = null, useJobSuffix = false) {
+function rememberTimeSyncResult(payload, captureSettleSeconds = null, useJobSuffix = false, startOffsetSeconds = -0.3) {
+  state.timeSyncStartOffsetSeconds = startOffsetSeconds;
   state.timeSyncPayload = payload;
   state.timeSyncCaptureSettleSeconds = captureSettleSeconds;
   state.timeSyncUseJobSuffix = useJobSuffix;
@@ -558,6 +567,7 @@ function formDataToSettings() {
     rate_limit_override_code: data.rate_limit_override_code || "",
     keep_session_alive: $("#jobForm").elements.keep_session_alive.checked,
     time_sync_enabled: $("#jobForm").elements.time_sync_enabled.checked,
+    start_offset_seconds: Number(data.start_offset_seconds ?? -0.3),
     time_sync_server: data.time_sync_server || "ntp.tencent.com",
     scheduled_start: normalizeLocalDateTime(data.scheduled_start),
     selected_courses: state.courses,
@@ -591,11 +601,13 @@ function addCourse() {
   $("#courseSection").value = "";
   $("#courseInstructor").value = "";
   $("#courseNote").value = "";
+  updateStartOffset();
   renderCourses();
 }
 
 function removeCourse(index) {
   state.courses.splice(index, 1);
+  updateStartOffset();
   renderCourses();
 }
 
@@ -643,6 +655,7 @@ async function readCartCourses() {
   }
 
   state.courses = payload.courses || [];
+  updateStartOffset();
   renderCourses();
   setTranslatedText("#serverStatus", state.courses.length ? "cart.readDone" : "cart.noCourses");
   if (state.courses.length) {
@@ -803,7 +816,8 @@ async function cleanBrowserCache() {
 async function testTimeSync() {
   const form = $("#jobForm");
   const server = form.elements.time_sync_server.value.trim() || "ntp.tencent.com";
-  setTranslatedText("#timeSyncStatus", "timeSync.connecting");
+  setTranslatedText("#timeSyncStatus",
+    "timeSync.connecting");
   setTranslatedText("#serverStatus", "timeSync.fetching");
   const response = await fetch("/api/time/sync", {
     method: "POST",
@@ -868,7 +882,7 @@ function renderTimeSyncFromJob(job) {
     offset_ms: settings.time_offset_ms,
     rtt_ms: settings.time_sync_rtt_ms,
     checked_at: settings.time_sync_checked_at,
-  }, settings.capture_settle_seconds, true);
+  }, settings.capture_settle_seconds, true, settings.start_offset_seconds ?? -0.3);
 }
 
 function formatTimeSyncResult(payload, captureSettleSeconds = null) {
@@ -876,7 +890,7 @@ function formatTimeSyncResult(payload, captureSettleSeconds = null) {
   const rtt = Number(payload.rtt_ms || 0);
   if (captureSettleSeconds !== null && captureSettleSeconds !== undefined && captureSettleSeconds !== "") {
     const settleMs = Number(captureSettleSeconds || 0) * 1000;
-    const totalLeadMs = settleMs + offset;
+    const totalLeadMs = settleMs + offset - state.timeSyncStartOffsetSeconds * 1000;
     const direction = totalLeadMs > 0 ? t("timeSync.ahead") : totalLeadMs < 0 ? t("timeSync.behind") : t("timeSync.noAdjust");
     return t("timeSync.resultWithSettle", {
       offset: `${offset >= 0 ? "+" : ""}${offset.toFixed(1)}`,
@@ -954,6 +968,7 @@ function applySettings(settings) {
     input.value = value ?? "";
   }
   activateStrategy(settings.strategy_mode || "smooth");
+  updateStartOffset();
   updateStrategyLockState();
 }
 
@@ -1085,3 +1100,14 @@ loadDefaults();
 refreshJobs();
 updateStrategyLockState();
 startPolling();
+
+function updateStartOffset() {
+  const value = Number(document.querySelector("#startOffset").value);
+  const zh = state.language === "zh";
+  document.querySelector("#startOffsetValue").textContent = value === 0
+    ? (zh ? "准时（0 秒）" : "On time (0 s)")
+    : `${value < 0 ? (zh ? "提前" : "Early") : (zh ? "滞后" : "Late")} ${Math.abs(value).toFixed(1)} ${zh ? "秒" : "s"}`;
+}
+
+document.querySelector("#startOffset").addEventListener("input", updateStartOffset);
+updateStartOffset();

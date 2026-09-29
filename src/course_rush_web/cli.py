@@ -75,7 +75,8 @@ def _log_time_sync(config: JobConfig, reporter: FileReporter) -> None:
         reporter.log(
             "Timing: launch = scheduled start "
             f"- capture settle {settings.capture_settle_seconds:.1f}s "
-            f"- NTP offset {(settings.time_offset_ms or 0.0):+.1f}ms"
+            f"- NTP offset {((settings.time_offset_ms or 0.0) if settings.time_sync_enabled else 0.0):+.1f}ms "
+            f"+ manual offset {settings.start_offset_seconds:+.1f}s"
         )
 
 
